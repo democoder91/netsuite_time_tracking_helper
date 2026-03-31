@@ -41,10 +41,18 @@
       <div class="d-flex align-items-center justify-content-between mb-4">
         <h1 class="h4 mb-0">Timesheet Data Entry</h1>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary btn-sm" onclick="openNetsuite()" title="Open NetSuite in browser">
+          <button
+            class="btn btn-outline-primary btn-sm"
+            onclick="openNetsuite()"
+            title="Open NetSuite in browser"
+          >
             &#8599; Open NetSuite
           </button>
-          <button class="btn btn-outline-secondary btn-sm" onclick="openSettings()" title="Settings">
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            onclick="openSettings()"
+            title="Settings"
+          >
             &#9881; Settings
           </button>
         </div>
@@ -121,7 +129,11 @@
                 ></textarea>
               </div>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm mt-3" id="addBtn">
+            <button
+              type="submit"
+              class="btn btn-primary btn-sm mt-3"
+              id="addBtn"
+            >
               Add Entry
             </button>
             <div id="add-msg"></div>
@@ -212,13 +224,32 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">&#9881; Settings</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
           </div>
           <div class="modal-body">
             <ul class="nav nav-tabs mb-3" role="tablist">
-              <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-creds">Credentials</a></li>
-              <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-opts">Options</a></li>
-              <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-prefs">Preferences</a></li>
+              <li class="nav-item">
+                <a
+                  class="nav-link active"
+                  data-bs-toggle="tab"
+                  href="#tab-creds"
+                  >Credentials</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tab-opts"
+                  >Options</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tab-prefs"
+                  >Preferences</a
+                >
+              </li>
             </ul>
             <div class="tab-content">
               <!-- Credentials tab -->
@@ -241,21 +272,61 @@
                 <div class="row">
                   <div class="col-md-6">
                     <h6>Projects</h6>
-                    <div id="s-projects-list" class="mb-2" style="max-height:220px;overflow-y:auto"></div>
+                    <div
+                      id="s-projects-list"
+                      class="mb-2"
+                      style="max-height: 220px; overflow-y: auto"
+                    ></div>
                     <div class="input-group input-group-sm mb-2">
-                      <input type="text" class="form-control" id="s-new-project" placeholder="New project name" />
-                      <button class="btn btn-outline-primary" onclick="addOption('project')">Add</button>
-                      <button class="btn btn-outline-secondary" onclick="validateNewOption('project')" title="Validate in NetSuite">&#10003;</button>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="s-new-project"
+                        placeholder="New project name"
+                      />
+                      <button
+                        class="btn btn-outline-primary"
+                        onclick="addOption('project')"
+                      >
+                        Add
+                      </button>
+                      <button
+                        class="btn btn-outline-secondary"
+                        onclick="validateNewOption('project')"
+                        title="Validate in NetSuite"
+                      >
+                        &#10003;
+                      </button>
                     </div>
                     <div id="s-project-status" class="small"></div>
                   </div>
                   <div class="col-md-6">
                     <h6>Service Items</h6>
-                    <div id="s-items-list" class="mb-2" style="max-height:220px;overflow-y:auto"></div>
+                    <div
+                      id="s-items-list"
+                      class="mb-2"
+                      style="max-height: 220px; overflow-y: auto"
+                    ></div>
                     <div class="input-group input-group-sm mb-2">
-                      <input type="text" class="form-control" id="s-new-item" placeholder="New service item" />
-                      <button class="btn btn-outline-primary" onclick="addOption('serviceItem')">Add</button>
-                      <button class="btn btn-outline-secondary" onclick="validateNewOption('serviceItem')" title="Validate in NetSuite">&#10003;</button>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="s-new-item"
+                        placeholder="New service item"
+                      />
+                      <button
+                        class="btn btn-outline-primary"
+                        onclick="addOption('serviceItem')"
+                      >
+                        Add
+                      </button>
+                      <button
+                        class="btn btn-outline-secondary"
+                        onclick="validateNewOption('serviceItem')"
+                        title="Validate in NetSuite"
+                      >
+                        &#10003;
+                      </button>
                     </div>
                     <div id="s-item-status" class="small"></div>
                   </div>
@@ -264,19 +335,32 @@
               <!-- Preferences tab -->
               <div class="tab-pane fade" id="tab-prefs">
                 <div class="form-check form-switch mb-3">
-                  <input class="form-check-input" type="checkbox" id="s-headless" checked />
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="s-headless"
+                    checked
+                  />
                   <label class="form-check-label" for="s-headless">
                     <strong>Run browser in background</strong>
                   </label>
-                  <div class="form-text">When enabled, sync and fetch operations run invisibly in the background. Disable this to see the browser window during automation (useful for debugging).</div>
+                  <div class="form-text">
+                    When enabled, sync and fetch operations run invisibly in the
+                    background. Disable this to see the browser window during
+                    automation (useful for debugging).
+                  </div>
                 </div>
               </div>
             </div>
             <div id="settings-msg" class="mt-2"></div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save</button>
+            <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="saveSettings()">
+              Save
+            </button>
           </div>
         </div>
       </div>

@@ -335,7 +335,13 @@ const server = http.createServer(async (req, res) => {
           storageState ? { storageState } : {},
         );
         const page = await context.newPage();
-        await navigateWithAuth(page, context, "https://4890950.app.netsuite.com/app/center/card.nl", AUTH_FILE, () => {});
+        await navigateWithAuth(
+          page,
+          context,
+          "https://4890950.app.netsuite.com/app/center/card.nl",
+          AUTH_FILE,
+          () => {},
+        );
       } catch (err) {
         console.error("open-netsuite error:", err);
       }
@@ -377,9 +383,12 @@ const server = http.createServer(async (req, res) => {
     const data = await parseBody(req);
     const errors = [];
     if (!data.date || !data.date.trim()) errors.push("Date is required.");
-    if (!data.mins || isNaN(data.mins) || parseInt(data.mins) < 1) errors.push("Duration must be a positive number.");
-    if (!data.customer_name || !data.customer_name.trim()) errors.push("Project is required.");
-    if (!data.service_item_id || !data.service_item_id.trim()) errors.push("Service Item is required.");
+    if (!data.mins || isNaN(data.mins) || parseInt(data.mins) < 1)
+      errors.push("Duration must be a positive number.");
+    if (!data.customer_name || !data.customer_name.trim())
+      errors.push("Project is required.");
+    if (!data.service_item_id || !data.service_item_id.trim())
+      errors.push("Service Item is required.");
     if (!data.memo || !data.memo.trim()) errors.push("Memo is required.");
     if (errors.length > 0) {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -409,7 +418,17 @@ const server = http.createServer(async (req, res) => {
     const creds = loadCredentials();
     const opts = loadOptions();
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ credentials: { email: creds.email || "", password: creds.password || "", securityAnswer: creds.securityAnswer || "", headless: creds.headless !== false }, options: opts }));
+    res.end(
+      JSON.stringify({
+        credentials: {
+          email: creds.email || "",
+          password: creds.password || "",
+          securityAnswer: creds.securityAnswer || "",
+          headless: creds.headless !== false,
+        },
+        options: opts,
+      }),
+    );
   } else if (req.method === "POST" && req.url === "/settings") {
     const raw = await new Promise((resolve) => {
       let body = "";
@@ -417,15 +436,33 @@ const server = http.createServer(async (req, res) => {
       req.on("end", () => resolve(body));
     });
     let payload;
-    try { payload = JSON.parse(raw); } catch { res.writeHead(400); res.end("Invalid JSON"); return; }
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      res.writeHead(400);
+      res.end("Invalid JSON");
+      return;
+    }
     if (payload.credentials) {
       const c = payload.credentials;
-      saveCredentials({ email: (c.email || "").trim(), password: (c.password || "").trim(), securityAnswer: (c.securityAnswer || "").trim(), headless: c.headless !== false });
+      saveCredentials({
+        email: (c.email || "").trim(),
+        password: (c.password || "").trim(),
+        securityAnswer: (c.securityAnswer || "").trim(),
+        headless: c.headless !== false,
+      });
     }
     if (payload.options) {
       const o = payload.options;
-      const clean = (arr) => (arr || []).map(s => s.trim()).filter(Boolean);
-      fs.writeFileSync(OPTIONS_FILE, JSON.stringify({ projects: clean(o.projects), serviceItems: clean(o.serviceItems) }, null, 2));
+      const clean = (arr) => (arr || []).map((s) => s.trim()).filter(Boolean);
+      fs.writeFileSync(
+        OPTIONS_FILE,
+        JSON.stringify(
+          { projects: clean(o.projects), serviceItems: clean(o.serviceItems) },
+          null,
+          2,
+        ),
+      );
     }
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true }));
@@ -436,29 +473,58 @@ const server = http.createServer(async (req, res) => {
       req.on("end", () => resolve(body));
     });
     let payload;
-    try { payload = JSON.parse(raw); } catch { res.writeHead(400); res.end("Invalid JSON"); return; }
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      res.writeHead(400);
+      res.end("Invalid JSON");
+      return;
+    }
     const { type, value } = payload; // type: "project" | "serviceItem"
-    if (!type || !value) { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ valid: false, error: "Missing type or value" })); return; }
+    if (!type || !value) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ valid: false, error: "Missing type or value" }));
+      return;
+    }
     (async () => {
       try {
         const storageState = fs.existsSync(AUTH_FILE) ? AUTH_FILE : undefined;
         const browser = await chromium.launch({ headless: isHeadless() });
-        const context = await browser.newContext(storageState ? { storageState } : {});
+        const context = await browser.newContext(
+          storageState ? { storageState } : {},
+        );
         const page = await context.newPage();
-        await navigateWithAuth(page, context, NETSUITE_TIMEBILL_URL, AUTH_FILE, () => {});
-        const selector = type === "project" ? "#customer_display" : "#item_display";
+        await navigateWithAuth(
+          page,
+          context,
+          NETSUITE_TIMEBILL_URL,
+          AUTH_FILE,
+          () => {},
+        );
+        const selector =
+          type === "project" ? "#customer_display" : "#item_display";
         await page.locator(selector).click();
         await page.locator(selector).fill(value);
         await page.keyboard.press("Tab");
         await page.waitForTimeout(2000);
         await page.waitForLoadState("networkidle");
         // Check if an alert/error popup appeared
-        const alertText = await page.locator(".uir-alert-box, .descr, #uir_alert_box").textContent().catch(() => "");
+        const alertText = await page
+          .locator(".uir-alert-box, .descr, #uir_alert_box")
+          .textContent()
+          .catch(() => "");
         const fieldVal = await page.locator(selector).inputValue();
         await browser.close();
-        const valid = fieldVal.length > 0 && !alertText.toLowerCase().includes("invalid");
+        const valid =
+          fieldVal.length > 0 && !alertText.toLowerCase().includes("invalid");
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ valid, fieldValue: fieldVal, alert: alertText || null }));
+        res.end(
+          JSON.stringify({
+            valid,
+            fieldValue: fieldVal,
+            alert: alertText || null,
+          }),
+        );
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ valid: false, error: err.message }));
