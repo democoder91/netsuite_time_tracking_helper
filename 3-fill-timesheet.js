@@ -83,7 +83,7 @@ function parseBody(req) {
   });
 }
 
-function renderPage(entries, netsuiteEntries = [], message = "") {
+function renderPage(allEntries, netsuiteEntries = [], message = "") {
   const { projects, serviceItems } = loadOptions();
   const tpl = fs.readFileSync(
     path.join(__dirname, "views", "index.html"),
@@ -97,24 +97,29 @@ function renderPage(entries, netsuiteEntries = [], message = "") {
     .map((s) => `<option value="${s}">${s}</option>`)
     .join("");
 
-  const localRows = entries
+  // Only show unsynced entries in the pending table
+  const pending = allEntries
+    .map((e, i) => ({ ...e, _idx: i }))
+    .filter((e) => !e.synced);
+
+  const localRows = pending
     .map(
-      (e, i) => `
+      (e) => `
       <tr>
         <td>${e.date}</td>
         <td>${e.customer_name}</td>
         <td>${e.service_item_id}</td>
         <td>${e.mins}</td>
         <td>${e.memo}</td>
-        <td><form method="POST" action="/delete" class="m-0"><input type="hidden" name="index" value="${i}"><button type="submit" class="btn btn-danger btn-sm" style="font-size:.78rem;padding:2px 8px">Delete</button></form></td>
+        <td><form method="POST" action="/delete" class="m-0"><input type="hidden" name="index" value="${e._idx}"><button type="submit" class="btn btn-danger btn-sm" style="font-size:.78rem;padding:2px 8px">Delete</button></form></td>
       </tr>`,
     )
     .join("");
 
   const localTable =
-    entries.length > 0
+    pending.length > 0
       ? `<div class="d-flex align-items-center justify-content-between mb-2">
-          <h6 class="mb-0">Pending Entries (${entries.length})</h6>
+          <h6 class="mb-0">Pending Entries (${pending.length})</h6>
           <button class="btn btn-success btn-sm" onclick="openSyncModal()">&#8593; Sync to NetSuite</button>
         </div>
         <div class="table-responsive"><table class="table table-sm table-striped table-bordered">
@@ -141,8 +146,8 @@ function renderPage(entries, netsuiteEntries = [], message = "") {
     .replace(/{{TODAY}}/g, new Date().toISOString().slice(0, 10))
     .replace("{{PROJECT_OPTIONS}}", projectOptions)
     .replace("{{SERVICE_OPTIONS}}", serviceOptions)
-    .replace("{{ENTRY_COUNT}}", String(entries.length))
-    .replace("{{ENTRY_WORD}}", entries.length === 1 ? "entry" : "entries")
+    .replace("{{ENTRY_COUNT}}", String(pending.length))
+    .replace("{{ENTRY_WORD}}", pending.length === 1 ? "entry" : "entries")
     .replace("{{NS_DATA_JSON}}", JSON.stringify(sorted));
 }
 
@@ -173,7 +178,8 @@ const server = http.createServer(async (req, res) => {
 
     (async () => {
       try {
-        const entries = loadEntries();
+        const allEntries = loadEntries();
+        const entries = allEntries.filter((e) => !e.synced);
         if (entries.length === 0) {
           send("error", "No entries to sync.");
           res.end();
@@ -219,13 +225,26 @@ const server = http.createServer(async (req, res) => {
         }
 
         await browser.close();
-        // Remove only successfully synced entries (keep failed ones)
-        const remaining = entries.filter((_, i) => failed.includes(i));
-        saveEntries(remaining);
+        // Mark successfully synced entries instead of deleting
+        const syncedSet = new Set();
+        for (let i = 0; i < entries.length; i++) {
+          if (!failed.includes(i)) syncedSet.add(i);
+        }
+        // Map back: entries[] are the unsynced subset of allEntries[]
+        let unsyncedIdx = 0;
+        for (let i = 0; i < allEntries.length; i++) {
+          if (!allEntries[i].synced) {
+            if (syncedSet.has(unsyncedIdx)) {
+              allEntries[i].synced = true;
+            }
+            unsyncedIdx++;
+          }
+        }
+        saveEntries(allEntries);
         if (failed.length === 0) {
           send(
             "done",
-            `Successfully synced ${synced} entr${synced === 1 ? "y" : "ies"} to NetSuite. The local list has been cleared.`,
+            `Successfully synced ${synced} entr${synced === 1 ? "y" : "ies"} to NetSuite.`,
           );
         } else {
           send(
@@ -374,6 +393,7 @@ const server = http.createServer(async (req, res) => {
       service_item_id: data.service_item_id.trim(),
       mins: data.mins.trim(),
       memo: data.memo.trim(),
+      synced: false,
     });
     saveEntries(entries);
     res.writeHead(200, { "Content-Type": "application/json" });

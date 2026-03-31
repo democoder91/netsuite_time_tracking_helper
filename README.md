@@ -97,6 +97,10 @@ You can configure credentials in three ways:
    }
    ```
 
+## Known Issues
+
+- **Memo field may not be filled** — Occasionally the Memo field is not populated by the automation. If you notice missing memos after syncing, edit the entry directly in NetSuite using the Edit button.
+
 ## Further Reading
 
 - [SETUP.md](SETUP.md) — Detailed setup and installation instructions
