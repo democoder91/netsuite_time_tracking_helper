@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timesheet Data Entry</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .btn-edit {
+        font-size: 0.78rem;
+        padding: 2px 8px;
+      }
+      .spinner-anim {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid #ccc;
+        border-top-color: #0d6efd;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #progress-log {
+        max-height: 260px;
+        overflow-y: auto;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="container py-4" style="max-width: 820px">
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h4 mb-0">Timesheet Data Entry</h1>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary btn-sm" onclick="openNetsuite()" title="Open NetSuite in browser">
+            &#8599; Open NetSuite
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="openSettings()" title="Settings">
+            &#9881; Settings
+          </button>
+        </div>
+      </div>
+
+      {{MESSAGE}}
+
+      <!-- ── Pending local entries ────────────────────────────────────────── -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h6 class="mb-2">Add Entry</h6>
+          <form id="addForm">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label" for="date">Date</label>
+                <input
+                  type="date"
+                  class="form-control"
+                  id="date"
+                  name="date"
+                  value="{{TODAY}}"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="mins">Duration (mins)</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="mins"
+                  name="mins"
+                  min="1"
+                  placeholder="e.g. 60"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="customer_name">Project</label>
+                <select
+                  class="form-select"
+                  id="customer_name"
+                  name="customer_name"
+                  required
+                >
+                  <option value="" disabled selected>Select a project</option>
+                  {{PROJECT_OPTIONS}}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="service_item_id"
+                  >Service Item</label
+                >
+                <select
+                  class="form-select"
+                  id="service_item_id"
+                  name="service_item_id"
+                  required
+                >
+                  <option value="" disabled selected>
+                    Select a service item
+                  </option>
+                  {{SERVICE_OPTIONS}}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="memo">Memo</label>
+                <textarea
+                  class="form-control"
+                  id="memo"
+                  name="memo"
+                  rows="2"
+                  placeholder="Describe the work done"
+                  required
+                ></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm mt-3" id="addBtn">
+              Add Entry
+            </button>
+            <div id="add-msg"></div>
+          </form>
+
+          <hr class="my-3" />
+          {{LOCAL_TABLE}}
+        </div>
+      </div>
+
+      <!-- ── NetSuite entries ─────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="mb-0">NetSuite Entries<span id="ns-count"></span></h6>
+            <button class="btn btn-primary btn-sm" onclick="startFetch()">
+              &#8595; Fetch from NetSuite
+            </button>
+          </div>
+
+          <div id="ns-controls" class="row g-2 mb-3" style="display: none">
+            <div class="col-md-4">
+              <select
+                class="form-select form-select-sm"
+                id="f-project"
+                onchange="applyFilters()"
+              >
+                <option value="">All Projects</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <select
+                class="form-select form-select-sm"
+                id="f-item"
+                onchange="applyFilters()"
+              >
+                <option value="">All Items</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <select
+                class="form-select form-select-sm"
+                id="f-pagesize"
+                onchange="changePageSize()"
+              >
+                <option value="10">10 per page</option>
+                <option value="25">25 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table
+              class="table table-sm table-striped table-bordered mb-1"
+              id="ns-table"
+              style="display: none"
+            >
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Date</th>
+                  <th>Project</th>
+                  <th>Item</th>
+                  <th>Duration</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="ns-tbody"></tbody>
+            </table>
+          </div>
+          <nav
+            id="ns-pagination"
+            class="d-flex align-items-center gap-2 flex-wrap mt-2"
+          ></nav>
+          <p class="text-muted small mb-0" id="ns-empty">
+            No entries loaded. Click "Fetch from NetSuite" to load.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Settings modal ────────────────────────────────────────────── -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">&#9881; Settings</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+              <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-creds">Credentials</a></li>
+              <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-opts">Options</a></li>
+              <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-prefs">Preferences</a></li>
+            </ul>
+            <div class="tab-content">
+              <!-- Credentials tab -->
+              <div class="tab-pane fade show active" id="tab-creds">
+                <div class="mb-3">
+                  <label class="form-label">Email</label>
+                  <input type="email" class="form-control" id="s-email" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Password</label>
+                  <input type="password" class="form-control" id="s-password" />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Security Answer</label>
+                  <input type="text" class="form-control" id="s-security" />
+                </div>
+              </div>
+              <!-- Options tab -->
+              <div class="tab-pane fade" id="tab-opts">
+                <div class="row">
+                  <div class="col-md-6">
+                    <h6>Projects</h6>
+                    <div id="s-projects-list" class="mb-2" style="max-height:220px;overflow-y:auto"></div>
+                    <div class="input-group input-group-sm mb-2">
+                      <input type="text" class="form-control" id="s-new-project" placeholder="New project name" />
+                      <button class="btn btn-outline-primary" onclick="addOption('project')">Add</button>
+                      <button class="btn btn-outline-secondary" onclick="validateNewOption('project')" title="Validate in NetSuite">&#10003;</button>
+                    </div>
+                    <div id="s-project-status" class="small"></div>
+                  </div>
+                  <div class="col-md-6">
+                    <h6>Service Items</h6>
+                    <div id="s-items-list" class="mb-2" style="max-height:220px;overflow-y:auto"></div>
+                    <div class="input-group input-group-sm mb-2">
+                      <input type="text" class="form-control" id="s-new-item" placeholder="New service item" />
+                      <button class="btn btn-outline-primary" onclick="addOption('serviceItem')">Add</button>
+                      <button class="btn btn-outline-secondary" onclick="validateNewOption('serviceItem')" title="Validate in NetSuite">&#10003;</button>
+                    </div>
+                    <div id="s-item-status" class="small"></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Preferences tab -->
+              <div class="tab-pane fade" id="tab-prefs">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="s-headless" checked />
+                  <label class="form-check-label" for="s-headless">
+                    <strong>Run browser in background</strong>
+                  </label>
+                  <div class="form-text">When enabled, sync and fetch operations run invisibly in the background. Disable this to see the browser window during automation (useful for debugging).</div>
+                </div>
+              </div>
+            </div>
+            <div id="settings-msg" class="mt-2"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Sync warning modal ──────────────────────────────────────────── -->
+    <div class="modal fade" id="syncModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">&#9888;&#65039; Sync to NetSuite</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <p>
+              You are about to submit
+              <strong>{{ENTRY_COUNT}} {{ENTRY_WORD}}</strong> to NetSuite.
+            </p>
+            <p class="text-danger fw-bold">
+              This action is irreversible. Once synced, entries
+              <strong>cannot be deleted</strong> and can only be edited directly
+              in NetSuite using the Edit button below.
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button class="btn btn-success btn-sm" onclick="startSync()">
+              I understand, proceed
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Progress modal ──────────────────────────────────────────────── -->
+    <div
+      class="modal fade"
+      id="progressModal"
+      tabindex="-1"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <span class="spinner-anim"></span>
+              <span id="progress-title">Processing...</span>
+            </h5>
+          </div>
+          <div class="modal-body">
+            <div
+              id="progress-log"
+              class="bg-light rounded p-2 font-monospace"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // ── Data injected by server ────────────────────────────────────────
+      const NS_DATA = {{NS_DATA_JSON}};
+
+      let pageSize = 10;
+      let nsFiltered = [];
+      let nsPage = 1;
+
+      // ── Filters & pagination ──────────────────────────────────────────
+      function initNsControls() {
+        if (!NS_DATA.length) return;
+        document.getElementById('ns-controls').style.display = '';
+        document.getElementById('ns-table').style.display = '';
+        document.getElementById('ns-empty').style.display = 'none';
+
+        const projects = [...new Set(NS_DATA.map(e => e.customer).filter(Boolean))].sort();
+        const items    = [...new Set(NS_DATA.map(e => e.item).filter(Boolean))].sort();
+        const pSel = document.getElementById('f-project');
+        const iSel = document.getElementById('f-item');
+        projects.forEach(p => { const o = new Option(p, p); pSel.add(o); });
+        items.forEach(i => { const o = new Option(i, i); iSel.add(o); });
+
+        applyFilters();
+      }
+
+      function applyFilters() {
+        const project = document.getElementById('f-project').value;
+        const item    = document.getElementById('f-item').value;
+        nsFiltered = NS_DATA.filter(e =>
+          (!project || e.customer === project) &&
+          (!item    || e.item     === item)
+        );
+        nsPage = 1;
+        renderNsTable();
+      }
+
+      function changePageSize() {
+        pageSize = parseInt(document.getElementById('f-pagesize').value);
+        nsPage = 1;
+        renderNsTable();
+      }
+
+      function renderNsTable() {
+        const tbody = document.getElementById('ns-tbody');
+        const pag   = document.getElementById('ns-pagination');
+        const count = document.getElementById('ns-count');
+
+        const total = nsFiltered.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (nsPage > totalPages) nsPage = totalPages;
+        const slice = nsFiltered.slice((nsPage - 1) * pageSize, nsPage * pageSize);
+
+        count.textContent = total ? ` (${total})` : '';
+
+        tbody.innerHTML = slice.map(e => `
+          <tr>
+            <td><code>${e.internalId}</code></td>
+            <td>${e.date}</td>
+            <td>${e.customer}</td>
+            <td>${e.item}</td>
+            <td>${e.duration}</td>
+            <td>${e.approvalStatus}</td>
+            <td>${e.editUrl ? `<button class="btn btn-outline-primary btn-edit" onclick="editEntry('${e.editUrl}')">Edit</button>` : ''}</td>
+          </tr>`).join('');
+
+        // Pagination
+        let html = `<nav><ul class="pagination pagination-sm mb-0">`;
+        html += `<li class="page-item ${nsPage===1?'disabled':''}"><a class="page-link" href="#" onclick="nsGoPage(${nsPage-1});return false">&lsaquo;</a></li>`;
+        for (let p = 1; p <= totalPages; p++) {
+          html += `<li class="page-item ${p===nsPage?'active':''}"><a class="page-link" href="#" onclick="nsGoPage(${p});return false">${p}</a></li>`;
+        }
+        html += `<li class="page-item ${nsPage===totalPages?'disabled':''}"><a class="page-link" href="#" onclick="nsGoPage(${nsPage+1});return false">&rsaquo;</a></li>`;
+        html += `</ul></nav>`;
+        html += `<span class="text-muted small">${(nsPage-1)*pageSize+1}&ndash;${Math.min(nsPage*pageSize,total)} of ${total}</span>`;
+        pag.innerHTML = html;
+      }
+
+      function nsGoPage(p) { nsPage = p; renderNsTable(); }
+
+      // ── SSE helpers ───────────────────────────────────────────────────
+      function showProgressModal(title) {
+        document.getElementById('progress-title').textContent = title;
+        document.getElementById('progress-log').innerHTML = '';
+        new bootstrap.Modal(document.getElementById('progressModal')).show();
+      }
+
+      function addLine(text, cls) {
+        const log = document.getElementById('progress-log');
+        const p = document.createElement('p');
+        p.className = 'mb-0 ' + (cls || '');
+        p.textContent = text;
+        log.appendChild(p);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      function sseConnect(url, doneReloadDelay) {
+        let finished = false;
+        const es = new EventSource(url);
+        es.onmessage = (e) => {
+          const data = JSON.parse(e.data);
+          if (data.type === 'done') {
+            finished = true;
+            addLine('\u2713 ' + data.message, 'text-success fw-bold');
+            es.close();
+            setTimeout(() => window.location.reload(), doneReloadDelay);
+          } else if (data.type === 'error') {
+            finished = true;
+            addLine('\u2717 ' + data.message, 'text-danger fw-bold');
+            es.close();
+          } else {
+            addLine(data.message);
+          }
+        };
+        es.onerror = () => {
+          es.close();
+          if (!finished) addLine('Connection lost. Check the terminal for details.', 'text-danger fw-bold');
+        };
+      }
+
+      // ── Actions ───────────────────────────────────────────────────────
+      function openNetsuite() {
+        fetch('/open-netsuite', { method: 'POST' });
+      }
+
+      function startFetch() {
+        showProgressModal('Fetching from NetSuite...');
+        sseConnect('/fetch-netsuite', 1500);
+      }
+
+      function openSyncModal() {
+        new bootstrap.Modal(document.getElementById('syncModal')).show();
+      }
+
+      function startSync() {
+        bootstrap.Modal.getInstance(document.getElementById('syncModal')).hide();
+        showProgressModal('Syncing to NetSuite...');
+        sseConnect('/sync', 2000);
+      }
+
+      // ── Edit & auto-fetch ────────────────────────────────────────
+      function editEntry(url) {
+        showProgressModal('Editing in NetSuite...');
+        addLine('Opening entry in browser — close the browser when done.');
+        fetch('/open-netsuite-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'url=' + encodeURIComponent(url)
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            addLine('Browser closed. Refreshing entries...', 'text-success fw-bold');
+            // Dismiss the edit modal and start fetch
+            bootstrap.Modal.getInstance(document.getElementById('progressModal')).hide();
+            startFetch();
+          } else {
+            addLine('Error: ' + (data.error || 'unknown'), 'text-danger fw-bold');
+          }
+        })
+        .catch(() => addLine('Connection lost.', 'text-danger fw-bold'));
+      }
+      // ── Settings ─────────────────────────────────────────────────────
+      let settingsData = { credentials: {}, options: { projects: [], serviceItems: [] } };
+
+      function openSettings() {
+        fetch('/settings').then(r => r.json()).then(data => {
+          settingsData = data;
+          document.getElementById('s-email').value = data.credentials.email || '';
+          document.getElementById('s-password').value = data.credentials.password || '';
+          document.getElementById('s-security').value = data.credentials.securityAnswer || '';
+          document.getElementById('s-headless').checked = data.credentials.headless !== false;
+          renderOptionsList('project', data.options.projects || []);
+          renderOptionsList('serviceItem', data.options.serviceItems || []);
+          document.getElementById('settings-msg').innerHTML = '';
+          new bootstrap.Modal(document.getElementById('settingsModal')).show();
+        });
+      }
+
+      function renderOptionsList(type, items) {
+        const containerId = type === 'project' ? 's-projects-list' : 's-items-list';
+        const container = document.getElementById(containerId);
+        if (!items.length) { container.innerHTML = '<span class="text-muted small">None</span>'; return; }
+        container.innerHTML = items.map((item, i) => `
+          <div class="d-flex align-items-center justify-content-between border-bottom py-1">
+            <span class="small">${item}</span>
+            <button class="btn btn-outline-danger btn-sm" style="font-size:.7rem;padding:1px 6px" onclick="removeOption('${type}',${i})">&times;</button>
+          </div>`).join('');
+      }
+
+      function addOption(type) {
+        const inputId = type === 'project' ? 's-new-project' : 's-new-item';
+        const val = document.getElementById(inputId).value.trim();
+        if (!val) return;
+        const arr = type === 'project' ? settingsData.options.projects : settingsData.options.serviceItems;
+        if (arr.some(v => v.toLowerCase() === val.toLowerCase())) {
+          showSettingsMsg('This option already exists.', 'warning'); return;
+        }
+        arr.push(val);
+        arr.sort();
+        renderOptionsList(type, arr);
+        document.getElementById(inputId).value = '';
+      }
+
+      function removeOption(type, idx) {
+        const arr = type === 'project' ? settingsData.options.projects : settingsData.options.serviceItems;
+        arr.splice(idx, 1);
+        renderOptionsList(type, arr);
+      }
+
+      function validateNewOption(type) {
+        const inputId = type === 'project' ? 's-new-project' : 's-new-item';
+        const statusId = type === 'project' ? 's-project-status' : 's-item-status';
+        const val = document.getElementById(inputId).value.trim();
+        if (!val) { document.getElementById(statusId).innerHTML = '<span class="text-warning">Enter a value first.</span>'; return; }
+        document.getElementById(statusId).innerHTML = '<span class="text-muted">Validating in NetSuite...</span>';
+        fetch('/validate-option', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: type, value: val })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.valid) {
+            document.getElementById(statusId).innerHTML = '<span class="text-success">&#10003; Valid' + (data.fieldValue && data.fieldValue !== val ? ' (resolved to: ' + data.fieldValue + ')' : '') + '</span>';
+          } else {
+            document.getElementById(statusId).innerHTML = '<span class="text-danger">&#10007; Not found in NetSuite' + (data.alert ? ': ' + data.alert : '') + '</span>';
+          }
+        })
+        .catch(() => { document.getElementById(statusId).innerHTML = '<span class="text-danger">Validation failed.</span>'; });
+      }
+
+      function saveSettings() {
+        const payload = {
+          credentials: {
+            email: document.getElementById('s-email').value,
+            password: document.getElementById('s-password').value,
+            securityAnswer: document.getElementById('s-security').value,
+            headless: document.getElementById('s-headless').checked
+          },
+          options: settingsData.options
+        };
+        fetch('/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+            window.location.reload();
+          } else {
+            showSettingsMsg('Failed to save.', 'danger');
+          }
+        })
+        .catch(() => showSettingsMsg('Connection error.', 'danger'));
+      }
+
+      function showSettingsMsg(msg, type) {
+        document.getElementById('settings-msg').innerHTML = '<div class="alert alert-' + type + ' py-1 px-2 small mb-0">' + msg + '</div>';
+      }
+
+      // ── Add entry & auto-fetch ────────────────────────────────────
+      document.getElementById('addForm').addEventListener('submit', function(ev) {
+        ev.preventDefault();
+        const form = ev.target;
+        const btn = document.getElementById('addBtn');
+        const msgEl = document.getElementById('add-msg');
+        if (msgEl) msgEl.innerHTML = '';
+        btn.disabled = true;
+        btn.textContent = 'Adding...';
+        fetch('/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(form)).toString()
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            form.reset();
+            document.getElementById('date').value = '{{TODAY}}';
+            window.location.reload();
+          } else if (data.errors) {
+            if (msgEl) msgEl.innerHTML = '<div class="alert alert-danger py-1 px-2 small mt-2">' + data.errors.join('<br>') + '</div>';
+            btn.disabled = false;
+            btn.textContent = 'Add Entry';
+          } else {
+            btn.disabled = false;
+            btn.textContent = 'Add Entry';
+          }
+        })
+        .catch(() => { btn.disabled = false; btn.textContent = 'Add Entry'; });
+      });
+      // ── Init ──────────────────────────────────────────────────────────
+      initNsControls();
+    </script>
+  </body>
+</html>

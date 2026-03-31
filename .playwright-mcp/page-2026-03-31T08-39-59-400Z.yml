@@ -1,0 +1,34 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - link "Oracle NetSuite" [ref=e7] [cursor=pointer]:
+      - /url: http://www.netsuite.com/portal/home.shtml?noredirect=T
+      - img "Oracle NetSuite" [ref=e8]
+    - heading "Log In" [level=2] [ref=e9]
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - textbox "Email address" [active] [ref=e12]
+        - generic [ref=e13]: Email address
+      - generic [ref=e15]:
+        - textbox "Password" [ref=e16]
+        - generic [ref=e17]: Password
+      - generic [ref=e19]:
+        - checkbox "Remember Me" [ref=e20] [cursor=pointer]
+        - generic [ref=e21] [cursor=pointer]: Remember Me
+      - button "Log In" [ref=e22] [cursor=pointer]:
+        - img [ref=e23]
+        - generic [ref=e25]: Log In
+      - link "Forgot your password?" [ref=e26] [cursor=pointer]:
+        - /url: /app/login/preparepwdreset.nl?email=&
+    - generic [ref=e27]:
+      - text: By clicking on the Log In button, you understand and agree to
+      - link "Oracle Terms of Use" [ref=e28] [cursor=pointer]:
+        - /url: https://www.oracle.com/us/legal/terms/index.html
+      - text: and
+      - link "Oracle Privacy Policy" [ref=e29] [cursor=pointer]:
+        - /url: https://www.oracle.com/us/legal/privacy/privacy-policy/index.html
+  - generic [ref=e30]:
+    - link "© Oracle" [ref=e31] [cursor=pointer]:
+      - /url: https://www.oracle.com/legal/copyright.html
+    - generic [ref=e32]: "|"
+    - link "Oracle Terms of Use for NetSuite Support Portal" [ref=e33] [cursor=pointer]:
+      - /url: http://www.netsuite.com/portal/assets/pdf/oracle-terms-use-netsuite-support-portal.pdf
